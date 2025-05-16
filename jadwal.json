@@ -1,0 +1,27 @@
+[
+    {
+      "kode": "KA2",
+      "rute": [
+        {
+          "stasiun": "Jakarta Kota",
+          "berangkat": "04:00"
+        },
+        {
+          "stasiun": "Kampung Bandan",
+          "datang": "04:25",
+          "berangkat": "04:26"
+        },
+        {
+          "stasiun": "Ancol",
+          "datang": "05:02",
+          "berangkat": "05:03"
+        },
+        {
+          "stasiun": "Tanjung Priuk",
+          "datang": "05:07",
+          "berangkat": "05:08"
+        }
+      ]
+    }
+
+  ]

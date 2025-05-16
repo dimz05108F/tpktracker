@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Visualisasi KRL dengan Status dan Tooltip</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #fff;
+      user-select: none;
+    }
+
+    #commuter-logo {
+      height: 40px;
+      margin-bottom: 20px;
+    }
+
+    #status-container {
+      max-width: 900px;
+      margin: 0 auto 20px auto;
+      font-weight: bold;
+    }
+
+    #line-container {
+      display: flex;
+      justify-content: space-between;
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+      height: 180px;
+    }
+
+    .station-box {
+      width: 90px;
+      height: 130px;
+      background: #888;
+      border-radius: 40px;
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      color: black;
+      font-weight: bold;
+      padding: 10px 0;
+      z-index: 5;
+    }
+
+    .station-label {
+      margin-top: 30px;
+      font-weight: bold;
+      user-select: none;
+      text-align: center;
+    }
+
+    .no-ka {
+      background: #bbb;
+      border-radius: 10px;
+      font-size: 11px;
+      color: black;
+      width: 60px;
+      text-align: center;
+      padding: 3px 0;
+      margin: 3px 0;
+      user-select: none;
+    }
+
+    .rail {
+      position: absolute;
+      left: 0;
+      height: 10px;
+      background: #c74dd6;
+      width: 100%;
+      border-radius: 5px;
+      z-index: 1;
+    }
+
+    .rail.top { top: 65px; }
+    .rail.bottom { top: 115px; }
+
+    .train-dot {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      background: red;
+      border-radius: 50%;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+      text-align: center;
+      line-height: 28px;
+      box-shadow: 0 0 6px rgba(255, 0, 0, 0.7);
+      pointer-events: none;
+      user-select: none;
+      transition: left 0.5s ease;
+      z-index: 10;
+    }
+
+    .train-label {
+      position: absolute;
+      font-size: 10px;
+      color: #333;
+      white-space: nowrap;
+      font-weight: bold;
+      transition: left 0.5s ease;
+      z-index: 10;
+    }
+
+    .train-label.top { top: 35px; }
+    .train-label.bottom { top: 145px; }
+
+    /* Tooltip */
+    .tooltip {
+      position: absolute;
+      background: #333;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      max-width: 250px;
+      z-index: 20;
+      white-space: normal;
+    }
+
+    .tooltip.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Running text */
+    #running-text {
+      width: 100%;
+      background: #222;
+      color: #ff4141;
+      white-space: nowrap;
+      overflow: hidden;
+      position: relative;
+      padding: 14px 0;
+      font-size: 11.5px;
+      z-index: 129;
+    }
+
+    #running-content {
+      display: inline-block;
+      position: absolute;
+      animation: marquee 22s linear infinite;
+    }
+
+    @keyframes marquee {
+      from { left: 100%; }
+      to { left: -100%; }
+    }
+
+    /* Jam digital */
+    #clock {
+      position: fixed;
+      top: 10px;
+      right: 20px;
+      font-family: monospace;
+      font-size: 16px;
+      background: #eee;
+      padding: 5px 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+      user-select: none;
+      z-index: 50;
+    }
+  </style>
+</head>
+<body>
+
+    <header style="text-align: center; padding: 10px 0; background-color: #f1f1f1; border-radius: 10px; margin-bottom: 15px;">
+        <h1 style="margin: 0; font-size: 22px; color: #333;">Tracker Commuterline Tanjung Priuk 2025</h1>
+        <p style="margin: 4px 0 0; font-size: 14px; color: #666;">Visualisasi posisi dan informasi kereta berdasarkan jadwal resmi</p>
+      </header>
+      
+
+  <!-- Logo -->
+  <img id="commuter-logo" src="tpline.png" alt="Logo KAI Commuter" />
+
+  <!-- Running Text -->
+  <div id="running-text">
+    <div id="running-content">Memuat pengumuman...</div>
+  </div>
+
+  <!-- Status Tujuan -->
+  <div id="status-container">
+    <div id="status-tujuan-jakarta">Tujuan Jakarta Kota: Belum tersedia</div>
+    <div id="status-tujuan-priuk">Tujuan Tanjung Priuk: Belum tersedia</div>
+  </div>
+
+  <!-- Jam Digital -->
+  <div id="clock">--:--:--</div>
+
+  <!-- Jalur & Stasiun -->
+  <div id="line-container">
+    <div class="rail top"></div>
+    <div class="rail bottom"></div>
+
+    <div class="station-box"><div class="no-ka">NO KA</div><div class="station-label">TANJUNG PRIUK</div><div class="no-ka">NO KA</div></div>
+    <div class="station-box"><div class="no-ka">NO KA</div><div class="station-label">ANCOL</div><div class="no-ka">NO KA</div></div>
+    <div class="station-box"><div class="no-ka">NO KA</div><div class="station-label">KAMPUNG BANDAN</div><div class="no-ka">NO KA</div></div>
+    <div class="station-box"><div class="no-ka">NO KA</div><div class="station-label">JAKARTA KOTA</div><div class="no-ka">NO KA</div></div>
+  </div>
+
+  <!-- Tooltip -->
+  <div id="tooltip" class="tooltip"></div>
+
+  <!-- Script -->
+  <script src="data.js"></script>
+  <script>
+const stationPositions = [100, 66, 33, 0];
+const container = document.getElementById('line-container');
+    const stations = container.querySelectorAll('.station-box');
+    const statusJakarta = document.getElementById('status-tujuan-jakarta');
+    const statusPriuk = document.getElementById('status-tujuan-priuk');
+    const tooltip = document.getElementById('tooltip');
+    const clockElem = document.getElementById('clock');
+
+    function setStationPositions() {
+      stations.forEach((el, idx) => {
+        el.style.left = `calc(${stationPositions[idx]}% - 45px)`;
+      });
+    }
+
+    function timeToMinutes(t) {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function calcTrainPos(index, fraction) {
+      const start = stationPositions[index];
+      const end = stationPositions[index + 1];
+      return start + (end - start) * fraction;
+    }
+
+    function showTooltip(x, y, html) {
+      tooltip.style.left = x + 10 + 'px';
+      tooltip.style.top = y + 10 + 'px';
+      tooltip.innerHTML = html;
+      tooltip.classList.add('show');
+    }
+
+    function hideTooltip() {
+      tooltip.classList.remove('show');
+    }
+
+    function clearTrainDots() {
+      document.querySelectorAll('.train-dot, .train-label').forEach(e => e.remove());
+      stations.forEach(station => {
+        station.querySelectorAll('.no-ka').forEach(el => el.textContent = 'NO KA');
+      });
+      statusJakarta.innerHTML = "Tujuan Jakarta Kota: Belum tersedia";
+      statusPriuk.innerHTML = "Tujuan Tanjung Priuk: Belum tersedia";
+    }
+
+    function updateTrains(data) {
+      clearTrainDots();
+      const now = new Date();
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      let nextJakartaList = [], nextPriukList = [];
+
+      data.forEach(jadwal => {
+        const arah = jadwal.arah.trim();
+        const times = jadwal.waktu.map(timeToMinutes);
+        if (nowMinutes > times[times.length - 1]) return;
+        if (arah === "TPK → JAKK") nextJakartaList.push(jadwal);
+        else if (arah === "JAKK → TPK") nextPriukList.push(jadwal);
+
+        let segmentIndex = 0;
+        for (let i = 0; i < times.length - 1; i++) {
+          if (nowMinutes >= times[i] && nowMinutes <= times[i + 1]) {
+            segmentIndex = i;
+            break;
+          }
+        }
+
+        const [start, end] = [times[segmentIndex], times[segmentIndex + 1]];
+        let fraction = (nowMinutes - start) / (end - start);
+        if (fraction < 0.05) fraction = 0;
+        if (fraction > 0.95) fraction = 1;
+
+        const top = arah === "TPK → JAKK" ? '65px' : '115px';
+        const labelClass = arah === "TPK → JAKK" ? 'top' : 'bottom';
+
+        if (fraction === 0) {
+          const box = stations[segmentIndex];
+          const noKa = box.querySelectorAll('.no-ka');
+          arah === "TPK → JAKK" ? noKa[1].textContent = jadwal.nomor_ka : noKa[0].textContent = jadwal.nomor_ka;
+
+          const pos = box.getBoundingClientRect();
+          const cont = container.getBoundingClientRect();
+          const left = pos.left - cont.left + pos.width / 2;
+
+          renderTrain(jadwal, `calc(${left}px - 14px)`, top, labelClass);
+        } else {
+          const percent = calcTrainPos(segmentIndex, fraction);
+          renderTrain(jadwal, `calc(${percent}% - 14px)`, top, labelClass);
+        }
+      });
+
+      statusJakarta.innerHTML = formatStatus(nextJakartaList, "Jakarta Kota");
+      statusPriuk.innerHTML = formatStatus(nextPriukList, "Tanjung Priuk");
+    }
+
+    function renderTrain(jadwal, left, top, labelClass) {
+      const dot = document.createElement('div');
+      dot.className = 'train-dot';
+      dot.style.left = left;
+      dot.style.top = top;
+      dot.textContent = jadwal.nomor_ka;
+
+      const label = document.createElement('div');
+      label.className = 'train-label ' + labelClass;
+      label.style.left = `calc(${left} + 6px)`;
+      label.textContent = `KA ${jadwal.nomor_ka}`;
+
+      dot.addEventListener('mouseenter', (e) => {
+        let html = `<strong>KA ${jadwal.nomor_ka}</strong><br>Relasi: ${jadwal.arah}<br><br><u>Jadwal:</u><br>`;
+        jadwal.stasiun.forEach((st, i) => html += `${st}: ${jadwal.waktu[i]}<br>`);
+        showTooltip(e.pageX, e.pageY, html);
+      });
+
+      dot.addEventListener('mouseleave', hideTooltip);
+
+      container.appendChild(dot);
+      container.appendChild(label);
+    }
+
+    function formatStatus(list, tujuan) {
+      if (list.length === 0) return `Tujuan ${tujuan}: Belum tersedia`;
+      list.sort((a, b) => timeToMinutes(a.waktu[0]) - timeToMinutes(b.waktu[0]));
+      const next2 = list.slice(0, 2);
+      return `Tujuan ${tujuan}:<br>` + next2.map(j => `KA ${j.nomor_ka} berangkat ${j.stasiun[0]} jam ${j.waktu[0]}`).join("<br>");
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const h = now.getHours().toString().padStart(2, '0');
+      const m = now.getMinutes().toString().padStart(2, '0');
+      const s = now.getSeconds().toString().padStart(2, '0');
+      clockElem.textContent = `${h}:${m}:${s}`;
+    }
+
+    function loadRunningText() {
+      fetch('announcement.txt')
+        .then(res => res.text())
+        .then(text => {
+          document.getElementById('running-content').textContent = text || "            ";
+        })
+        .catch(() => {
+          document.getElementById('running-content').textContent = "Gagal memuat pengumuman.";
+        });
+    }
+
+    // Inisialisasi
+    setStationPositions();
+    updateTrains(jadwalKereta);
+    addTooltipListeners();
+    updateClock();
+    loadRunningText();
+
+    // Interval
+    setInterval(() => {
+      updateTrains(jadwalKereta);
+      addTooltipListeners();
+    }, 60000);
+
+    setInterval(updateClock, 1000);
+    setInterval(loadRunningText, 50000);
+
+    window.addEventListener('resize', () => {
+      setStationPositions();
+      updateTrains(jadwalKereta);
+      addTooltipListeners();
+    });
+
+    function addTooltipListeners() {
+      // Tooltip sudah ditambahkan dalam renderTrain
+    }
+  </script>
+        <footer style="text-align: center; padding: 10px 0; margin-top: 40px; font-size: 12px; color: #888;">   
+            &copy; 2025 KAI Commuter — Dimz Degurechaff
+        </footer>
+
+</body>
+</html>
